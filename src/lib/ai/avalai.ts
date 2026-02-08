@@ -20,7 +20,7 @@ type AvalAiResponse = {
   };
 };
 
-const baseUrl = process.env.AVALAI_BASE_URL;
+const baseUrl = process.env.AVALAI_BASE_URL ?? "https://api.avalai.ir/v1";
 const apiKey = process.env.AVALAI_API_KEY;
 const model = process.env.AVALAI_MODEL ?? "gpt-4o-mini";
 
