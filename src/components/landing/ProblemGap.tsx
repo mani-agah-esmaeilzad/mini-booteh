@@ -1,6 +1,6 @@
 
 import { Section } from "@/components/ui/section";
-import { Zap, AlertTriangle, check } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 
 export function ProblemGap() {
     return (
