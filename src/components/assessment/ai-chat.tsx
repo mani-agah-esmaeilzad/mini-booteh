@@ -38,7 +38,7 @@ export function AiChat({ sessionId, onComplete }: Props) {
   const sendMessage = async () => {
     const trimmed = input.trim()
     if (!trimmed || isLoading || isFinalizing) return
-    const nextMessages = [...messages, { role: "user", content: trimmed }]
+    const nextMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed }]
     setMessages(nextMessages)
     setInput("")
     setIsLoading(true)
@@ -53,7 +53,8 @@ export function AiChat({ sessionId, onComplete }: Props) {
       if (!response.ok) {
         throw new Error(data?.error ?? texts.assessment.chatError)
       }
-      setMessages([...nextMessages, { role: "assistant", content: data.reply ?? "" }])
+      const assistantReply: ChatMessage = { role: "assistant", content: data.reply ?? "" }
+      setMessages([...nextMessages, assistantReply])
     } catch (err) {
       console.error(err)
       setError(texts.assessment.chatError)
@@ -77,7 +78,8 @@ export function AiChat({ sessionId, onComplete }: Props) {
         throw new Error(data?.error ?? texts.assessment.chatError)
       }
       if (data.reply) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.reply }])
+        const assistantReply: ChatMessage = { role: "assistant", content: data.reply }
+        setMessages((prev) => [...prev, assistantReply])
       }
       onComplete()
     } catch (err) {
