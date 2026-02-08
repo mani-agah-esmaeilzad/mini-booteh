@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AdminRole {
+  ADMIN
+}
+
+enum QuestionType {
+  LIKERT
+  BOOLEAN
+  TEXT
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         AdminRole @default(ADMIN)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model Questionnaire {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  isPublished Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  questions   Question[]
+  scoring     ScoringRule[]
+  sessions    AssessmentSession[]
+}
+
+model Question {
+  id              String        @id @default(cuid())
+  questionnaireId String
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  text            String
+  type            QuestionType  @default(LIKERT)
+  optionsJson     Json?
+  subscale        String?
+  reverse         Boolean       @default(false)
+  order           Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  answers         Answer[]
+  @@unique([questionnaireId, order])
+}
+
+model ScoringRule {
+  id              String        @id @default(cuid())
+  questionnaireId String
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  calculation     Json
+  thresholds      Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model AssessmentSession {
+  id                  String        @id @default(cuid())
+  questionnaireId     String
+  questionnaire       Questionnaire @relation(fields: [questionnaireId], references: [id])
+  consentGiven        Boolean       @default(false)
+  userEmail           String?
+  language            String        @default("fa")
+  shareToken          String?       @unique
+  status              String        @default("IN_PROGRESS")
+  riskBand            String?
+  totalsJson          Json?
+  focusTotalsJson     Json?
+  promptVersion       Int?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  completedAt         DateTime?
+  answers             Answer[]
+  focusRuns           FocusRun[]
+  report              Report?
+}
+
+model Answer {
+  id         String             @id @default(cuid())
+  sessionId  String
+  questionId String
+  session    AssessmentSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question   Question           @relation(fields: [questionId], references: [id])
+  valueNumber Float?
+  rawValue   Json?
+  createdAt  DateTime           @default(now())
+}
+
+model FocusRun {
+  id             String            @id @default(cuid())
+  sessionId      String
+  session        AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  durationMs     Int
+  accuracy       Float?
+  reactionAvgMs  Float?
+  reactionStdMs  Float?
+  commission     Int?
+  omission       Int?
+  resultsJson    Json?
+  createdAt      DateTime          @default(now())
+}
+
+model PromptTemplate {
+  id            String   @id @default(cuid())
+  name          String
+  version       Int
+  systemPrompt  String
+  userTemplate  String
+  isActive      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  reports       Report[]
+  @@unique([name, version])
+}
+
+model Report {
+  id               String            @id @default(cuid())
+  sessionId        String            @unique
+  session          AssessmentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  promptTemplateId String?
+  promptTemplate   PromptTemplate?   @relation(fields: [promptTemplateId], references: [id])
+  narrativeMd      String
+  generatedAt      DateTime          @default(now())
+  modelInfoJson    Json?
+}
+
+model FocusTestSetting {
+  id                String   @id @default("focus-default")
+  durationSeconds   Int      @default(120)
+  symbolFrequencyMs Int      @default(900)
+  targetRatio       Float    @default(0.35)
+  targetSymbol      String   @default("X")
+  nonTargetSymbol   String   @default("O")
+  thresholds        Json?
+  variabilityBands  Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model AppSetting {
+  id               String   @id @default("app-setting")
+  allowUserEmail   Boolean  @default(false)
+  focusTestOptional Boolean @default(true)
+  defaultLanguage  String   @default("fa")
+  disclaimerText   String   @default("این غربالگری جایگزین تشخیص تخصصی نیست و صرفاً برای آگاهی فردی ارائه می‌شود.")
+  enableShareLinks Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id])
+  action      String
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+}
