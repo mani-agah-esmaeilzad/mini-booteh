@@ -3,7 +3,7 @@ import type { FocusRun, PromptTemplate } from "@prisma/client";
 import { generateReportNarrative } from "@/lib/ai/avalai";
 import type { FocusMetrics } from "@/lib/focus";
 import { prisma } from "@/lib/prisma";
-import { determineRiskBand, calculateSubscales } from "@/lib/scoring";
+import { determineRiskBand, calculateSubscales, type TotalsPayload } from "@/lib/scoring";
 import { getAppSettings } from "@/lib/settings";
 
 export async function loadSessionDetail(sessionId: string) {
@@ -64,13 +64,15 @@ export async function composeReport({
   if (!session) {
     throw new Error("نشست پیدا نشد.");
   }
-  const totals = calculateSubscales({
-    answers: session.answers,
-    scoringRules: session.questionnaire.scoring,
-  });
-  const riskBand = determineRiskBand({
-    totals,
-  });
+  const existingTotals = session.totalsJson as TotalsPayload | null;
+  const totals =
+    existingTotals ??
+    calculateSubscales({
+      answers: session.answers,
+      scoringRules: session.questionnaire.scoring,
+    });
+  const riskBand =
+    session.riskBand ? { label: session.riskBand } : determineRiskBand({ totals });
   const focusMetrics = parseFocusMetrics(session.focusRuns[0]);
   const template =
     promptTemplate ??

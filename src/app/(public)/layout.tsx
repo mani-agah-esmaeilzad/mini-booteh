@@ -1,20 +1,18 @@
-import type { ReactNode } from "react";
 
-import { SiteFooter } from "@/components/layout/site-footer";
-import { SiteHeader } from "@/components/layout/site-header";
-import { getAppSettings } from "@/lib/settings";
+import { Footer } from "@/components/landing/Footer";
+import { Header } from "@/components/landing/Header";
 
-export default async function PublicLayout({
+export default function PublicLayout({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
-  const settings = await getAppSettings();
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <SiteHeader />
+    <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
+      <Header />
       <main className="flex-1">{children}</main>
-      <SiteFooter disclaimer={settings.disclaimerText} />
+      <Footer />
     </div>
   );
 }
+

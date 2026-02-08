@@ -17,7 +17,7 @@ export async function GET() {
       questionnaire: { select: { title: true } },
     },
   });
-  const header = ["شناسه نشست", "عنوان پرسشنامه", "وضعیت", "بازه ریسک", "زمان ایجاد", "زمان تکمیل"];
+  const header = ["شناسه نشست", "عنوان ارزیابی", "وضعیت", "بازه ریسک", "زمان ایجاد", "زمان تکمیل"];
   const rows = [
     header.join(","),
     ...sessions.map((record) =>

@@ -27,15 +27,7 @@ export default async function AssessmentPage({
   }
   const session = await prisma.assessmentSession.findUnique({
     where: { id: sessionId },
-    include: {
-      questionnaire: {
-        include: {
-          questions: {
-            orderBy: { order: "asc" },
-          },
-        },
-      },
-    },
+    select: { id: true },
   });
   if (!session) {
     notFound();
@@ -55,16 +47,6 @@ export default async function AssessmentPage({
     <div className="container py-12">
       <AssessmentFlow
         sessionId={session.id}
-        questionnaire={{
-          id: session.questionnaire.id,
-          title: session.questionnaire.title,
-          description: session.questionnaire.description ?? undefined,
-          questions: session.questionnaire.questions.map((question) => ({
-            id: question.id,
-            text: question.text,
-            subscale: question.subscale,
-          })),
-        }}
         focusSettings={focusConfig}
         focusOptional={appSettings.focusTestOptional}
       />

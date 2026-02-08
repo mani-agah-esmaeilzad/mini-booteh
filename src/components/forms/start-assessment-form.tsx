@@ -35,7 +35,7 @@ export function StartAssessmentForm({
           <p className="text-xs text-muted-foreground">{texts.startForm.emailHint}</p>
         </div>
       ) : null}
-      <div className="flex items-start gap-3 rounded-md border bg-white p-4">
+      <div className="flex items-start gap-3 rounded-md border bg-card/50 p-4">
         <Checkbox id="consent" name="consent" required />
         <div className="space-y-1">
           <Label htmlFor="consent" className="font-medium">

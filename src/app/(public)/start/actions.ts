@@ -37,7 +37,7 @@ export async function startAssessmentAction(prevState: {
   ]);
 
   if (!questionnaire) {
-    return { error: "پرسشنامه‌ای منتشر نشده است. با پشتیبانی تماس بگیر." };
+    return { error: "ارزیابی در حال حاضر فعال نیست. با پشتیبانی تماس بگیر." };
   }
 
   const session = await prisma.assessmentSession.create({

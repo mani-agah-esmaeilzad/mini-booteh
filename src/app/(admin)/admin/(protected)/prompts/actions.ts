@@ -6,7 +6,7 @@ import { auth } from "@/auth";
 import { recordAuditLog } from "@/lib/audit";
 import { generateReportNarrative } from "@/lib/ai/avalai";
 import { prisma } from "@/lib/prisma";
-import { calculateSubscales } from "@/lib/scoring";
+import { calculateSubscales, type TotalsPayload } from "@/lib/scoring";
 import { getAppSettings } from "@/lib/settings";
 import { upsertPromptSchema, promptPreviewSchema } from "@/lib/validators/admin";
 
@@ -101,10 +101,12 @@ export async function previewPromptAction(_: unknown, formData: FormData) {
   if (!session || !template) {
     return { error: "نشست یا الگو یافت نشد." };
   }
-  const totals = calculateSubscales({
-    answers: session.answers,
-    scoringRules: session.questionnaire.scoring,
-  });
+  const totals =
+    (session.totalsJson as TotalsPayload | null) ??
+    calculateSubscales({
+      answers: session.answers,
+      scoringRules: session.questionnaire.scoring,
+    });
   const normalizedFocus =
     (session.focusTotalsJson && typeof session.focusTotalsJson === "object"
       ? (session.focusTotalsJson as Record<string, unknown>)

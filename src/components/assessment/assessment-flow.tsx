@@ -2,37 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Area, AreaChart } from "recharts";
-import { Controller, useForm } from "react-hook-form";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import { z } from "zod";
 
 import type { FocusEvent, FocusMetrics } from "@/lib/focus";
 import { buildReactionDistribution } from "@/lib/focus";
 import type { TotalsPayload } from "@/lib/scoring";
 
+import { AiChat } from "@/components/assessment/ai-chat";
 import { FocusTest } from "@/components/assessment/focus-test";
-import { LikertScale } from "@/components/assessment/likert-scale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { texts } from "@/lib/texts/fa";
 import { toPersianDigits } from "@/lib/i18n/format";
-
-type Question = {
-  id: string;
-  text: string;
-  subscale?: string | null;
-};
-
-type Questionnaire = {
-  id: string;
-  title: string;
-  description?: string | null;
-  questions: Question[];
-};
 
 type FocusSettings = {
   durationSeconds: number;
@@ -49,33 +33,18 @@ type CompletionPayload = {
   focusMetrics?: FocusMetrics;
 };
 
-const answerSchema = z.object({
-  answers: z.record(z.string(), z.number().min(0).max(4)),
-});
-
 const steps = texts.assessment.steps;
 
 export function AssessmentFlow({
   sessionId,
-  questionnaire,
   focusSettings,
   focusOptional,
 }: {
   sessionId: string;
-  questionnaire: Questionnaire;
   focusSettings: FocusSettings;
   focusOptional: boolean;
 }) {
   const router = useRouter();
-  const form = useForm<z.infer<typeof answerSchema>>({
-    resolver: zodResolver(answerSchema),
-    defaultValues: {
-      answers: questionnaire.questions.reduce(
-        (acc, question) => ({ ...acc, [question.id]: 2 }),
-        {},
-      ),
-    },
-  });
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusResult, setFocusResult] = useState<{ metrics: FocusMetrics; events: FocusEvent[] }>();
@@ -91,33 +60,6 @@ export function AssessmentFlow({
       .map((event) => event.reactionTimeMs ?? 0);
     return buildReactionDistribution(times);
   }, [focusResult]);
-
-  const submitAnswers = async (values: z.infer<typeof answerSchema>) => {
-    setIsSubmitting(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/assessment/${sessionId}/answers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          answers: Object.entries(values.answers).map(([questionId, value]) => ({
-            questionId,
-            value,
-          })),
-        }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data?.error ?? "ذخیره پاسخ‌ها انجام نشد");
-      }
-      setCurrentStep(1);
-    } catch (err) {
-      console.error(err);
-      setError(texts.assessment.error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const finalizeReport = async () => {
     setIsSubmitting(true);
@@ -147,6 +89,12 @@ export function AssessmentFlow({
     }
   };
 
+  const handleChatComplete = () => {
+    if (currentStep < 1) {
+      setCurrentStep(1);
+    }
+  };
+
   const handleViewReport = () => {
     if (!completion) return;
     router.push(`/report/${completion.shareToken}`);
@@ -167,42 +115,7 @@ export function AssessmentFlow({
         ))}
       </div>
       {currentStep === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>{questionnaire.title}</CardTitle>
-            <CardDescription>{questionnaire.description}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <form
-              className="space-y-6"
-              onSubmit={form.handleSubmit(submitAnswers)}
-            >
-              {questionnaire.questions.map((question) => (
-                <div key={question.id} className="space-y-3 rounded-lg border bg-white p-4 shadow-sm">
-                  <div className="text-sm font-medium text-slate-900">
-                    {question.text}
-                    {question.subscale ? (
-                      <span className="mr-2 text-xs uppercase tracking-wide text-muted-foreground">
-                        {question.subscale}
-                      </span>
-                    ) : null}
-                  </div>
-                  <Controller
-                    control={form.control}
-                    name={`answers.${question.id}` as const}
-                    render={({ field }) => (
-                      <LikertScale value={field.value ?? 0} onChange={field.onChange} />
-                    )}
-                  />
-                </div>
-              ))}
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {texts.assessment.saveAnswers}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <AiChat sessionId={sessionId} onComplete={handleChatComplete} />
       ) : null}
 
       {currentStep >= 1 && currentStep < 2 ? (

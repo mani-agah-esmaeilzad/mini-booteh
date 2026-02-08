@@ -20,6 +20,11 @@ type AvalAiResponse = {
   };
 };
 
+export type ChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
+
 const baseUrl = process.env.AVALAI_BASE_URL ?? "https://api.avalai.ir/v1";
 const apiKey = process.env.AVALAI_API_KEY;
 const model = process.env.AVALAI_MODEL ?? "gpt-4o-mini";
@@ -91,6 +96,28 @@ async function callAvalAi(payload: unknown): Promise<AvalAiResponse> {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function chatWithAvalAi({
+  messages,
+  systemPrompt,
+  temperature = 0.4,
+  modelOverride,
+}: {
+  messages: ChatMessage[];
+  systemPrompt?: string;
+  temperature?: number;
+  modelOverride?: string;
+}): Promise<AvalAiResponse> {
+  const payloadMessages = systemPrompt
+    ? [{ role: "system", content: systemPrompt }, ...messages]
+    : messages;
+  const payload = {
+    model: modelOverride ?? model,
+    temperature,
+    messages: payloadMessages,
+  };
+  return callAvalAi(payload);
 }
 
 export async function generateReportNarrative({
