@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { Link } from "@/components/ui/button";
 
 // Using native anchor links for simplicity, but could be enhanced with smooth scroll
 const sections = [
