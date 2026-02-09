@@ -28,6 +28,7 @@ export type ChatMessage = {
 const baseUrl = process.env.AVALAI_BASE_URL ?? "https://api.avalai.ir/v1";
 const apiKey = process.env.AVALAI_API_KEY;
 const model = process.env.AVALAI_MODEL ?? "gpt-4o-mini";
+const timeoutMs = Number.parseInt(process.env.AVALAI_TIMEOUT_MS ?? "60000", 10);
 
 function ensureEnv(value: string | undefined, key: string) {
   if (!value) {
@@ -66,7 +67,8 @@ async function callAvalAi(payload: unknown): Promise<AvalAiResponse> {
   const url = validateBaseUrl(ensureEnv(baseUrl, "AVALAI_BASE_URL"));
   const key = ensureEnv(apiKey, "AVALAI_API_KEY");
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20_000);
+  const safeTimeoutMs = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 60_000;
+  const timeout = setTimeout(() => controller.abort(), safeTimeoutMs);
   try {
     const response = await fetch(`${url}/chat/completions`, {
       method: "POST",
@@ -90,6 +92,11 @@ async function callAvalAi(payload: unknown): Promise<AvalAiResponse> {
     };
   } catch (error) {
     console.error("AvalAI fetch error", error);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(
+        `زمان پاسخ AvalAI بیشتر از حد مجاز بود (timeout=${safeTimeoutMs}ms). مقدار AVALAI_TIMEOUT_MS را افزایش بده یا بعداً دوباره تلاش کن.`,
+      );
+    }
     throw new Error(
       "ارتباط با AvalAI برقرار نشد. تنظیمات AVALAI_BASE_URL و AVALAI_API_KEY را بررسی کن یا بعداً دوباره تلاش کن.",
     );
