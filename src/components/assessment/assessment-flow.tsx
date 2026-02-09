@@ -27,7 +27,8 @@ type FocusSettings = {
 };
 
 type CompletionPayload = {
-  shareToken: string;
+  shareToken?: string;
+  reportId?: string;
   riskBand?: string;
   totals: TotalsPayload;
   focusMetrics?: FocusMetrics;
@@ -97,7 +98,11 @@ export function AssessmentFlow({
 
   const handleViewReport = () => {
     if (!completion) return;
-    router.push(`/report/${completion.shareToken}`);
+    const token =
+      completion.shareToken?.trim() ||
+      completion.reportId?.trim() ||
+      sessionId;
+    router.push(`/report/${encodeURIComponent(token)}`);
   };
 
   return (

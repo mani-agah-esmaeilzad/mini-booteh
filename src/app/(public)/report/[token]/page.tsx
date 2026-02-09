@@ -22,7 +22,11 @@ export default async function ReportPage({
 }) {
   const session = await prisma.assessmentSession.findFirst({
     where: {
-      OR: [{ shareToken: params.token }, { id: params.token }],
+      OR: [
+        { shareToken: params.token },
+        { id: params.token },
+        { report: { id: params.token } },
+      ],
     },
     include: {
       questionnaire: {
