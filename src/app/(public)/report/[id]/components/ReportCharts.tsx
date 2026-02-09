@@ -39,7 +39,10 @@ export function ReportCharts({ metrics }: ReportChartsProps) {
                             <XAxis type="number" domain={[0, 100]} unit="%" />
                             <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12 }} />
                             <Tooltip
-                                formatter={(val: number) => [`${val}%`, 'نمره']}
+                                formatter={(value: number | string | undefined) => [
+                                    `${typeof value === "number" ? value : Number(value ?? 0)}%`,
+                                    "نمره",
+                                ]}
                                 cursor={{ fill: 'transparent' }}
                             />
                             <Bar dataKey="percent" radius={[0, 4, 4, 0]} barSize={20}>
