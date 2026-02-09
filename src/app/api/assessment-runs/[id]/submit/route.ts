@@ -99,12 +99,22 @@ export async function POST(
             scores.map(s => `- ${s.subscale}: ${s.riskBand} (${s.score}/${s.maxScore})`).join("\n");
 
 
+        const totalsJson: Prisma.InputJsonArray = scores.map(
+            (s): Prisma.InputJsonObject => ({
+                subscale: s.subscale,
+                score: s.score,
+                maxScore: s.maxScore,
+                percentage: s.percentage,
+                riskBand: s.riskBand,
+            })
+        );
+
         await prisma.assessmentSession.update({
             where: { id },
             data: {
                 status: "COMPLETED",
                 riskBand: globalRisk,
-                totalsJson: scores as Prisma.InputJsonValue,
+                totalsJson,
                 completedAt: new Date(),
             }
         });
