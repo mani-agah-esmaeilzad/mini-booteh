@@ -1,202 +1,289 @@
+
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { StartAssessmentForm } from "@/components/forms/start-assessment-form";
-import { StepIndicator } from "./StepIndicator";
-import { ArrowLeft, ArrowRight, BrainCircuit, Users, Target, Clock, ShieldCheck, Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ArrowLeft, ArrowRight, Loader2, Play, ShieldAlert } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+import type { Question, Questionnaire } from "@prisma/client";
+import { FocusTest } from "@/components/assessment/focus-test";
+import { LikertScale } from "@/components/assessment/likert-scale";
 
 interface StartWizardProps {
     allowEmail: boolean;
+    questionnaire: (Questionnaire & { questions: Question[] }) | null;
+    focusSettings: any;
+    appSettings: any;
 }
 
-const steps = [
-    { id: 1, label: "انتخاب هدف" },
-    { id: 2, label: "نوع تجربه" },
-    { id: 3, label: "عمق و زمان" },
-    { id: 4, label: "شروع مسیر" },
-];
+const STEPS = ["جلسه معرفی", "اطلاعات پایه", "تست پرسشنامه‌ای", "تست تمرکز"];
 
-export function StartWizard({ allowEmail }: StartWizardProps) {
-    const [currentStep, setCurrentStep] = useState(1);
-    const [selections, setSelections] = useState({
-        goal: "",
-        mode: "",
-        duration: ""
-    });
+export function StartWizard({ allowEmail, questionnaire, focusSettings, appSettings }: StartWizardProps) {
+    const router = useRouter();
+    const [currentStep, setCurrentStep] = useState(0);
 
-    const handleNext = () => {
-        if (currentStep < 4) setCurrentStep(c => c + 1);
+    // State
+    const [consentGiven, setConsentGiven] = useState(false);
+    const [privacyAccepted, setPrivacyAccepted] = useState(false);
+    const [group, setGroup] = useState<string>("adult");
+    const [answers, setAnswers] = useState<Record<string, number>>({});
+    const [focusResults, setFocusResults] = useState<any>(null);
+
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Initialize session on start (transition from Step 1 to 2)
+    const createSession = async () => {
+        try {
+            setIsSubmitting(true);
+            const res = await fetch("/api/assessment-runs", {
+                method: "POST",
+                body: JSON.stringify({ questionnaireId: questionnaire?.id }),
+            });
+            if (!res.ok) throw new Error("Failed to start session");
+            const data = await res.json();
+            setSessionId(data.id);
+            setCurrentStep(2); // Go to Questions
+        } catch (e) {
+            console.error(e);
+            alert("خطا در ایجاد نشست. لطفاً دوباره تلاش کنید.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
-    const handleBack = () => {
-        if (currentStep > 1) setCurrentStep(c => c - 1);
+    const submitFinal = async () => {
+        if (!sessionId) return;
+        try {
+            setIsSubmitting(true);
+            const res = await fetch(`/api/assessment-runs/${sessionId}/submit`, {
+                method: "POST",
+                body: JSON.stringify({
+                    answers,
+                    focusResults,
+                    group // saving group as metadata if needed, though mostly for logic selection later
+                }),
+            });
+            const data = await res.json();
+            if (data.redirectUrl) {
+                router.push(data.redirectUrl);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("خطا در ثبت نهایی. لطفاً دوباره تلاش کنید.");
+            setIsSubmitting(false);
+        }
     };
 
-    const select = (key: keyof typeof selections, value: string) => {
-        setSelections(prev => ({ ...prev, [key]: value }));
+    const questions = questionnaire?.questions || [];
+    const progress = (Object.keys(answers).length / questions.length) * 100;
+
+    // -- Render Helpers --
+
+    const renderConsent = () => (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
+            <div className="text-center space-y-4">
+                <h1 className="text-3xl font-bold bg-gradient-to-l from-primary to-primary/60 bg-clip-text text-transparent">
+                    شناخت الگوی تمرکز
+                </h1>
+                <p className="text-muted-foreground text-lg">
+                    مسیر خودشناسی از اینجا شروع می‌شود.
+                </p>
+            </div>
+
+            <Card className="border-destructive/20 bg-destructive/5">
+                <CardContent className="pt-6 flex gap-4 items-start">
+                    <ShieldAlert className="w-6 h-6 text-destructive shrink-0 mt-1" />
+                    <div className="space-y-2">
+                        <h3 className="font-bold text-destructive">سلب مسئولیت مهم</h3>
+                        <p className="text-sm text-foreground/80 leading-relaxed text-justify">
+                            {appSettings.disclaimerText}
+                            <br />
+                            این ابزار صرفاً یک چک‌لیست غربالگری است و به هیچ وجه جایگزین تشخیص پزشک متخصص نیست.
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="space-y-4 p-4 border rounded-xl bg-card">
+                <div className="flex items-center space-x-2 space-x-reverse">
+                    <Checkbox id="consent" checked={consentGiven} onCheckedChange={(c) => setConsentGiven(!!c)} />
+                    <Label htmlFor="consent" className="cursor-pointer">
+                        می‌دانم که این یک ابزار غربالگری است و نه تشخیص پزشکی.
+                    </Label>
+                </div>
+                <div className="flex items-center space-x-2 space-x-reverse">
+                    <Checkbox id="privacy" checked={privacyAccepted} onCheckedChange={(c) => setPrivacyAccepted(!!c)} />
+                    <Label htmlFor="privacy" className="cursor-pointer">
+                        قوانین حریم خصوصی را می‌پذیرم (داده‌ها ناشناس پردازش می‌شوند).
+                    </Label>
+                </div>
+            </div>
+
+            <Button
+                size="lg"
+                className="w-full text-lg h-12"
+                disabled={!consentGiven || !privacyAccepted}
+                onClick={() => setCurrentStep(1)}
+            >
+                شروع مسیر
+                <ArrowLeft className="mr-2 w-5 h-5" />
+            </Button>
+        </div>
+    );
+
+    const renderGroupSelection = () => (
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+            <div className="text-center">
+                <h2 className="text-2xl font-bold mb-2">برای چه کسی پرسشنامه را پر می‌کنید؟</h2>
+                <p className="text-muted-foreground">این انتخاب سوالات را متناسب با شرایط شما تغییر می‌دهد.</p>
+            </div>
+
+            <RadioGroup value={group} onValueChange={setGroup} className="grid sm:grid-cols-3 gap-4">
+                {[
+                    { id: "adult", label: "بزرگسال (خودم)", desc: "۱۸ سال به بالا" },
+                    { id: "teen", label: "نوجوان", desc: "۱۲ تا ۱۷ سال (غیرفعال در دمو)", disabled: true },
+                    { id: "child", label: "کودک", desc: "۵ تا ۱۱ سال (توسط والد - غیرفعال)", disabled: true }
+                ].map(item => (
+                    <div key={item.id}>
+                        <RadioGroupItem value={item.id} id={item.id} className="peer sr-only" disabled={item.disabled} />
+                        <Label htmlFor={item.id} className={`flex flex-col items-center justify-between rounded-xl border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer ${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                            <span className="text-xl mb-2">👤</span>
+                            <span className="font-semibold">{item.label}</span>
+                            <span className="text-xs text-muted-foreground mt-1">{item.desc}</span>
+                        </Label>
+                    </div>
+                ))}
+            </RadioGroup>
+
+            <div className="flex gap-4">
+                <Button variant="ghost" onClick={() => setCurrentStep(0)}>بازگشت</Button>
+                <Button className="flex-1" onClick={createSession} disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : "ادامه"}
+                </Button>
+            </div>
+        </div>
+    );
+
+    const renderQuestions = () => {
+        // Basic "All in one page" or "Step by step" logic. 
+        // Let's do a smooth list for UX, auto-scroll or just a clean list.
+        // For "Wizard" feel, let's do 1 by 1 or sections. 
+        // Given the request for "Wizard", let's do a clean list with smooth scroll or just standard form.
+        // Standard list is easier for user to review.
+
+        const unansweredCount = questions.length - Object.keys(answers).length;
+
+        return (
+            <div className="space-y-8 animate-in fade-in">
+                <div className="sticky top-0 bg-background/95 backdrop-blur z-10 py-4 border-b">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium text-muted-foreground">پیشرفت پاسخ‌دهی</span>
+                        <span className="text-sm font-medium">{Math.round(progress)}%</span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
+                </div>
+
+                <div className="space-y-6">
+                    {questions.map((q, idx) => (
+                        <Card key={q.id} className={`transition-all duration-300 ${answers[q.id] !== undefined ? 'border-primary/50 bg-primary/5' : 'border-border'}`}>
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-lg font-medium leading-relaxed">
+                                    <span className="text-primary/50 ml-2">#{idx + 1}</span>
+                                    {q.text}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <LikertScale
+                                    value={answers[q.id] ?? null}
+                                    onChange={(val) => setAnswers(prev => ({ ...prev, [q.id]: val }))}
+                                />
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <div className="pt-8 pb-20">
+                    <Button
+                        size="lg"
+                        className="w-full"
+                        disabled={unansweredCount > 0}
+                        onClick={() => setCurrentStep(3)}
+                    >
+                        {unansweredCount > 0
+                            ? `${unansweredCount} سوال باقی مانده`
+                            : "پایان سوالات و مرحله بعد"}
+                    </Button>
+                </div>
+            </div>
+        );
     };
+
+    const renderFocusTest = () => (
+        <div className="space-y-6 animate-in fade-in">
+            <div className="text-center space-y-2">
+                <h2 className="text-2xl font-bold">تست تمرکز (Optional)</h2>
+                <p className="text-muted-foreground">
+                    این تست کوتاه (۲ دقیقه) سرعت واکنش و دقت شما را می‌سنجد.
+                    <br />
+                    انجام آن برای دریافت گزارش کامل پیشنهاد می‌شود.
+                </p>
+            </div>
+
+            {sessionId && (
+                <FocusTest
+                    sessionId={sessionId}
+                    settings={{
+                        ...focusSettings,
+                        durationSeconds: focusSettings.durationSeconds || 60 // fallback
+                    }}
+                    onComplete={(res) => {
+                        setFocusResults(res);
+                        // Auto submit after test
+                        // Wait a moment for UX
+                        setTimeout(() => submitFinal(), 500); // trigger final submit logic which uses state
+                    }}
+                />
+            )}
+
+            {/* If test completed locally or skipped */}
+            <div className="flex justify-center pt-4">
+                {!focusResults && (
+                    <Button variant="ghost" onClick={() => submitFinal()}>
+                        فعلاً رد کردن این مرحله
+                    </Button>
+                )}
+                {focusResults && (
+                    <Button onClick={() => submitFinal()} disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 animate-spin" /> : null}
+                        مشاهده نتیجه نهایی
+                    </Button>
+                )}
+            </div>
+        </div>
+    );
 
     return (
-        <div className="w-full max-w-4xl mx-auto space-y-12">
-            <StepIndicator currentStep={currentStep} steps={steps} />
-
-            <div className="min-h-[400px]">
-                {/* Step 1: Goal */}
-                {currentStep === 1 && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="text-center space-y-2">
-                            <h2 className="text-3xl font-bold">چه مهارتی را می‌خواهید تقویت کنید؟</h2>
-                            <p className="text-muted-foreground">هدف اصلی خود را برای این جلسه انتخاب کنید.</p>
-                        </div>
-                        <div className="grid md:grid-cols-3 gap-6">
-                            {[
-                                { id: "leadership", title: "رهبری تیم", icon: Users, desc: "مدیریت افراد، انگیزش و تقسیم کار" },
-                                { id: "communication", title: "ارتباط موثر", icon: BrainCircuit, desc: "فن بیان، مذاکره و شنیدن فعال" },
-                                { id: "strategy", title: "تفکر استراتژیک", icon: Target, desc: "برنامه‌ریزی، تحلیل و تصمیم‌گیری کلان" },
-                            ].map((item) => (
-                                <Card
-                                    key={item.id}
-                                    onClick={() => select("goal", item.id)}
-                                    className={cn(
-                                        "p-6 cursor-pointer transition-all hover:border-primary/50 hover:shadow-lg group relative overflow-hidden",
-                                        selections.goal === item.id ? "border-primary bg-primary/5 ring-1 ring-primary" : "bg-card/50"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "size-12 rounded-xl flex items-center justify-center mb-4 transition-colors",
-                                        selections.goal === item.id ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground group-hover:bg-primary/20 group-hover:text-primary"
-                                    )}>
-                                        <item.icon className="size-6" />
-                                    </div>
-                                    <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                                    <p className="text-sm text-muted-foreground">{item.desc}</p>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 2: Mode */}
-                {currentStep === 2 && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="text-center space-y-2">
-                            <h2 className="text-3xl font-bold">نوع تجربه را مشخص کنید</h2>
-                            <p className="text-muted-foreground">آیا می‌خواهید ارزیابی شوید یا تمرین کنید؟</p>
-                        </div>
-                        <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-                            {[
-                                { id: "evaluation", title: "ارزیابی (Evaluation)", icon: ShieldCheck, desc: "شبیه‌سازی شرایط واقعی بدون راهنمایی. مناسب برای و دریافت گزارش نمره." },
-                                { id: "practice", title: "تمرین (Practice)", icon: Zap, desc: "همراه با راهنمایی و بازخورد لحظه‌ای هوش مصنوعی. مناسب برای یادگیری." },
-                            ].map((item) => (
-                                <Card
-                                    key={item.id}
-                                    onClick={() => select("mode", item.id)}
-                                    className={cn(
-                                        "p-8 cursor-pointer transition-all hover:border-accent/50 hover:shadow-lg flex flex-col items-center text-center gap-4",
-                                        selections.mode === item.id ? "border-accent bg-accent/5 ring-1 ring-accent" : "bg-card/50"
-                                    )}
-                                >
-                                    <div className={cn(
-                                        "size-16 rounded-2xl flex items-center justify-center transition-colors",
-                                        selections.mode === item.id ? "bg-accent text-accent-foreground" : "bg-secondary text-foreground"
-                                    )}>
-                                        <item.icon className="size-8" />
-                                    </div>
-                                    <h3 className="font-bold text-xl">{item.title}</h3>
-                                    <p className="text-muted-foreground">{item.desc}</p>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 3: Depth/Duration */}
-                {currentStep === 3 && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="text-center space-y-2">
-                            <h2 className="text-3xl font-bold">عمق و زمان جلسه</h2>
-                            <p className="text-muted-foreground">چقدر می‌خواهید وقت بگذارید؟</p>
-                        </div>
-                        <div className="grid gap-4 max-w-xl mx-auto">
-                            {[
-                                { id: "short", title: "کوتاه (۵-۱۰ دقیقه)", icon: Clock, desc: "یک سناریوی سریع برای مرور مفاهیم." },
-                                { id: "medium", title: "استاندارد (۱۵-۲۰ دقیقه)", icon: Clock, desc: "تحلیل عمیق‌تر با جزئیات بیشتر." },
-                                { id: "long", title: "چالش کامل (۳۰+ دقیقه)", icon: Clock, desc: "سناریوی پیچیده چندمرحله‌ای." },
-                            ].map((item) => (
-                                <Card
-                                    key={item.id}
-                                    onClick={() => select("duration", item.id)}
-                                    className={cn(
-                                        "p-4 flex items-center gap-4 cursor-pointer transition-all hover:border-primary/50",
-                                        selections.duration === item.id ? "border-primary bg-primary/5" : "bg-card/50"
-                                    )}
-                                >
-                                    <div className="p-3 bg-background rounded-lg border border-border">
-                                        <item.icon className="size-5 text-muted-foreground" />
-                                    </div>
-                                    <div className="text-start">
-                                        <h4 className="font-bold text-foreground">{item.title}</h4>
-                                        <p className="text-sm text-muted-foreground">{item.desc}</p>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Step 4: Final Form */}
-                {currentStep === 4 && (
-                    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-lg mx-auto">
-                        <div className="text-center space-y-2 mb-8">
-                            <h2 className="text-3xl font-bold">آماده شروع هستید؟</h2>
-                            <p className="text-muted-foreground">خلاصه انتخاب‌های شما:</p>
-                            <div className="flex justify-center gap-2 text-sm font-medium mt-4">
-                                <span className="px-3 py-1 bg-primary/10 text-primary rounded-full border border-primary/20">
-                                    {selections.goal === 'leadership' ? 'رهبری تیم' : selections.goal === 'communication' ? 'ارتباط موثر' : 'استراتژی'}
-                                </span>
-                                <span className="px-3 py-1 bg-accent/10 text-accent rounded-full border border-accent/20">
-                                    {selections.mode === 'evaluation' ? 'ارزیابی' : 'تمرین'}
-                                </span>
-                            </div>
-                        </div>
-
-                        <Card className="p-6 border-primary/20 bg-card/50 shadow-xl">
-                            <StartAssessmentForm allowEmail={allowEmail} />
-                        </Card>
-                    </div>
-                )}
+        <div className="max-w-2xl mx-auto min-h-[600px] py-6">
+            <div className="mb-8 flex justify-center space-x-2 space-x-reverse">
+                {STEPS.map((s, i) => (
+                    <div key={i} className={`h-1.5 w-8 rounded-full transition-colors ${i <= currentStep ? 'bg-primary' : 'bg-muted'}`} />
+                ))}
             </div>
 
-            {/* Navigation Footer */}
-            <div className="flex justify-between items-center pt-8 border-t border-border mt-auto">
-                <Button
-                    variant="ghost"
-                    onClick={handleBack}
-                    disabled={currentStep === 1}
-                    className={cn(currentStep === 1 && "invisible")}
-                >
-                    <ArrowRight className="ml-2 size-4" />
-                    بازگشت
-                </Button>
-
-                {currentStep < 4 ? (
-                    <Button
-                        onClick={handleNext}
-                        disabled={
-                            (currentStep === 1 && !selections.goal) ||
-                            (currentStep === 2 && !selections.mode) ||
-                            (currentStep === 3 && !selections.duration)
-                        }
-                        className="px-8"
-                    >
-                        مرحله بعد
-                        <ArrowLeft className="mr-2 size-4" />
-                    </Button>
-                ) : null}
-            </div>
+            <AnimatePresence mode="wait">
+                {currentStep === 0 && <motion.div key="step0" exit={{ opacity: 0, x: -20 }}>{renderConsent()}</motion.div>}
+                {currentStep === 1 && <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>{renderGroupSelection()}</motion.div>}
+                {currentStep === 2 && <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>{renderQuestions()}</motion.div>}
+                {currentStep === 3 && <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>{renderFocusTest()}</motion.div>}
+            </AnimatePresence>
         </div>
     );
 }

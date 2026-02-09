@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/ui/section";
 import Link from "next/link";
-import { ArrowLeft, PlayCircle } from "lucide-react";
+import { ArrowLeft, BrainCircuit } from "lucide-react";
 
 export function Hero() {
     return (
@@ -13,43 +13,44 @@ export function Hero() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                         </span>
-                        نسخه جدید هوش مصنوعی فعال شد
+                        نسخه آزمایشی موتور غربالگری
                     </div>
 
                     <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.15] text-foreground">
-                        مربی مهارت‌های
-                        <span className="text-primary block mt-2">انسانی و رهبری</span>
+                        شناخت الگوی
+                        <span className="text-primary block mt-2">تمرکز و توجه</span>
                     </h1>
 
                     <p className="text-lg md:text-xl text-muted-foreground max-w-lg leading-relaxed">
-                        ارتقای مهارت‌های نرم، ارتباط موثر و مدیریت تیم با تمرین‌های تعاملی و بازخورد لحظه‌ای هوش مصنوعی.
+                        با ترکیبی از پرسشنامه استاندارد و آزمون واکنش‌سنجی، در کمتر از ۱۰ دقیقه وضعیت توجه خود را بررسی کنید.
+                        <br />
+                        <span className="text-sm opacity-80">(محرمانه، ناشناس و رایگان)</span>
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-4 mt-4">
                         <Button variant="shine" size="xl" asChild>
                             <Link href="/start">
-                                شروع رایگان
+                                شروع غربالگری
                                 <ArrowLeft className="mr-2 h-5 w-5" />
                             </Link>
                         </Button>
                         <Button variant="outline" size="xl" asChild>
                             <Link href="/start">
-                                <PlayCircle className="ml-2 h-5 w-5" />
-                                درخواست دمو
+                                <BrainCircuit className="ml-2 h-5 w-5" />
+                                آشنایی با روش کار
                             </Link>
                         </Button>
                     </div>
 
                     <div className="flex items-center gap-4 mt-8 text-sm text-muted-foreground">
-                        <div className="flex -space-x-3 space-x-reverse">
-                            {[1, 2, 3, 4].map((i) => (
-                                <div key={i} className="w-10 h-10 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden">
-                                    {/* Avatar placeholder */}
-                                    <div className={`w-full h-full bg-gradient-to-br from-gray-500 to-gray-700 opacity-50`} />
-                                </div>
-                            ))}
-                        </div>
-                        <p>مورد اعتماد +۲۰۰۰ مدیر محصول</p>
+                        <p className="flex items-center gap-2">
+                            <span className="inline-block w-2 h-2 rounded-full bg-green-500"></span>
+                            بدون نیاز به ثبت‌نام
+                        </p>
+                        <p className="flex items-center gap-2">
+                            <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                            گزارش فوری
+                        </p>
                     </div>
                 </div>
 
@@ -67,23 +68,25 @@ export function Hero() {
 
                         <div className="mt-12 space-y-6">
                             <div className="flex gap-4">
-                                <div className="w-12 h-12 rounded-full bg-primary/20 flex-shrink-0" />
+                                <div className="w-12 h-12 rounded-full bg-primary/20 flex-shrink-0 flex items-center justify-center">
+                                    <BrainCircuit className="w-6 h-6 text-primary" />
+                                </div>
                                 <div className="space-y-2 flex-1">
                                     <div className="h-4 w-3/4 bg-white/10 rounded animate-pulse" />
                                     <div className="h-4 w-1/2 bg-white/10 rounded animate-pulse delay-100" />
                                 </div>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-sm leading-relaxed text-muted-foreground">
-                                تحلیل هوش مصنوعی: پاسخ شما در موقعیت تعارض تیمی نشان‌دهنده همدلی بالاست، اما می‌توانید روی قاطعیت تمرکز بیشتری کنید...
+                                تحلیل سیستم: نمرات شما در بخش «تکانشگری» کمی بالاتر از میانگین است. این می‌تواند به معنای تصمیم‌گیری‌های سریع و خلاقانه باشد، اما گاهی باعث عجله می‌شود...
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="h-24 rounded-xl bg-primary/10 border border-primary/20 flex flex-col items-center justify-center gap-2">
-                                    <span className="text-2xl font-bold text-primary">۸۵٪</span>
-                                    <span className="text-xs text-muted-foreground">همدلی</span>
+                                    <span className="text-2xl font-bold text-primary">۳۲۵ms</span>
+                                    <span className="text-xs text-muted-foreground">سرعت واکنش</span>
                                 </div>
                                 <div className="h-24 rounded-xl bg-white/5 border border-white/10 flex flex-col items-center justify-center gap-2">
-                                    <span className="text-2xl font-bold text-foreground">۴۲+</span>
-                                    <span className="text-xs text-muted-foreground">تمرین</span>
+                                    <span className="text-2xl font-bold text-foreground">۹۵٪</span>
+                                    <span className="text-xs text-muted-foreground">دقت تمرکز</span>
                                 </div>
                             </div>
                         </div>
