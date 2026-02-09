@@ -1,16 +1,19 @@
 
 import { NextResponse } from "next/server";
-import { Prisma, PrismaClient } from "@prisma/client";
-import { calculateScores, ScoringRuleWithCalc } from "@/lib/engine/scoring";
+import { Prisma } from "@prisma/client";
 
-const prisma = new PrismaClient();
+import { calculateScores, ScoringRuleWithCalc } from "@/lib/engine/scoring";
+import { prisma } from "@/lib/prisma";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(
     req: Request,
-    { params }: { params: Promise<{ id: string }> } // In Next.js 15+, params is async
+    { params }: { params: { id: string } }
 ) {
     try {
-        const { id } = await params;
+        const { id } = params;
         const { answers, focusResults } = await req.json(); // answers: Record<questionId, value>
 
         // 1. Save answers
