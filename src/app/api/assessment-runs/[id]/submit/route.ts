@@ -1,6 +1,6 @@
 
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { calculateScores, ScoringRuleWithCalc } from "@/lib/engine/scoring";
 
 const prisma = new PrismaClient();
@@ -104,7 +104,7 @@ export async function POST(
             data: {
                 status: "COMPLETED",
                 riskBand: globalRisk,
-                totalsJson: scores,
+                totalsJson: scores as Prisma.InputJsonValue,
                 completedAt: new Date(),
             }
         });
